@@ -102,5 +102,5 @@ The app includes a built-in evaluation framework to test the accuracy of the RAG
 - **Analyze:** The system will generate Faithfulness and Relevancy scores for each question and display a detailed report.
 
 <p align="center">
-  <img src="imgs/3.png" width="100%" alt="Evaluation Dashboard" />
+  <img src="imgs/3.png" width="40%" alt="Evaluation Dashboard" />
 </p>
