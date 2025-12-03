@@ -21,6 +21,10 @@ from hybrid_retrieval import HybridRetriever, create_retrieval_pipeline
 from agent import RAGAgent, AgentStep
 from evaluation import RAGEvaluator, EvalCase
 
+# Constants
+GITHUB_URL = "https://github.com/hamzaniazucalgary/doc-rag-project"
+OPENAI_API_URL = "https://platform.openai.com/api-keys"
+
 # Page config
 st.set_page_config(
     page_title="Ask Your Docs",
@@ -33,15 +37,34 @@ st.set_page_config(
 st.markdown(get_custom_css(), unsafe_allow_html=True)
 
 
+def check_api_key() -> bool:
+    """Check if a valid API key is configured."""
+    api_key = os.environ.get("OPENAI_API_KEY", "")
+    if not api_key:
+        return False
+    is_valid, _ = validate_api_key(api_key)
+    return is_valid
+
+
+def show_api_key_error():
+    """Show error dialog when API key is missing."""
+    st.error(
+        "⚠️ **OpenAI API Key Required**\n\n"
+        "Please enter your API key in the sidebar to use this feature.\n\n"
+        f"[🔗 Get an API key here]({OPENAI_API_URL})"
+    )
+
+
 def handle_api_error(e: Exception) -> None:
     """Handle API errors with user-friendly messages."""
     error_msg = str(e).lower()
     if "rate_limit" in error_msg or "429" in error_msg:
         st.error("⏳ Rate limited. Please wait a moment and try again.")
     elif "api_key" in error_msg or "authentication" in error_msg or "invalid" in error_msg:
-        st.error("🔑 Invalid API key. Please check your key and try again.")
-        if "api_key_verified" in st.session_state:
-            del st.session_state.api_key_verified
+        st.error(
+            "🔑 **Invalid API Key**\n\n"
+            f"Please check your API key in the sidebar. [Get a new key]({OPENAI_API_URL})"
+        )
     elif "model" in error_msg:
         st.error(f"❌ Model error: {str(e)}")
     else:
@@ -69,7 +92,6 @@ def init_session_state():
         st.session_state.processed_files = set()
         st.session_state.hybrid_retriever = None
         st.session_state.agent = None
-        st.session_state.api_key_verified = False
         st.session_state.initialized = True
 
 
@@ -119,96 +141,49 @@ def create_pipeline_func():
     return pipeline
 
 
-def render_api_key_setup():
-    """Render API key setup interface."""
-    st.markdown("""
-    <div style="text-align: center; padding: 2rem 0;">
-        <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">📄 Ask Your Docs</h1>
-        <p style="opacity: 0.7; font-size: 1.1rem;">Intelligent document analysis powered by AI</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("""
-        <div style="
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            border-radius: 12px;
-            padding: 2rem;
-            margin: 1rem 0;
-        ">
-            <h3 style="margin-top: 0;">🔑 Enter Your OpenAI API Key</h3>
-            <p style="opacity: 0.8; font-size: 0.9rem;">
-                Your API key is required to process documents and answer questions.
-                It's stored only in your browser session and never saved.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        api_key = st.text_input(
-            "OpenAI API Key",
-            type="password",
-            placeholder="sk-...",
-            help="Get your API key from https://platform.openai.com/api-keys",
-            label_visibility="collapsed"
-        )
-        
-        col_btn1, col_btn2 = st.columns(2)
-        with col_btn1:
-            if st.button("✓ Verify & Continue", type="primary", use_container_width=True):
-                if not api_key:
-                    st.error("Please enter your API key")
-                else:
-                    is_valid, error_msg = validate_api_key(api_key)
-                    if not is_valid:
-                        st.error(f"⚠️ {error_msg}")
-                    else:
-                        with st.spinner("Verifying API key..."):
-                            works, test_error = test_api_key(api_key)
-                            if works:
-                                os.environ["OPENAI_API_KEY"] = api_key
-                                st.session_state.api_key_verified = True
-                                st.success("✓ API key verified!")
-                                st.rerun()
-                            else:
-                                st.error(f"❌ {test_error}")
-        
-        with col_btn2:
-            st.link_button(
-                "🔗 Get API Key",
-                "https://platform.openai.com/api-keys",
-                use_container_width=True
-            )
-        
-        st.markdown("""
-        <div style="margin-top: 2rem; padding: 1rem; border-radius: 8px; background: rgba(0,0,0,0.05);">
-            <p style="font-size: 0.85rem; margin: 0; opacity: 0.7;">
-                <strong>Privacy Note:</strong> Your API key is used only to communicate with OpenAI's servers. 
-                It's stored temporarily in your browser session and is never logged or saved to any database.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-
 def render_sidebar():
     """Render the sidebar with all controls."""
     with st.sidebar:
-        # Header
-        st.markdown("""
-        <div style="text-align: center; padding: 1rem 0; border-bottom: 1px solid rgba(128,128,128,0.2); margin-bottom: 1rem;">
-            <h2 style="margin: 0; font-size: 1.5rem;">📄 Ask Your Docs</h2>
-        </div>
-        """, unsafe_allow_html=True)
+        # Header with GitHub link
+
         
-        # API Key Status
-        if st.session_state.get("api_key_verified"):
-            st.success("✓ API Key Active", icon="🔑")
-            if st.button("Change API Key", use_container_width=True):
-                st.session_state.api_key_verified = False
-                if "OPENAI_API_KEY" in os.environ:
-                    del os.environ["OPENAI_API_KEY"]
+        # API Key Section
+        st.markdown("### 🔑 API Key")
+        
+        current_key = os.environ.get("OPENAI_API_KEY", "")
+        has_key = check_api_key()
+        
+        if has_key:
+            st.success("✓ API Key configured", icon="✅")
+            masked_key = current_key[:7] + "..." + current_key[-4:] if len(current_key) > 15 else "***"
+            st.caption(f"Key: `{masked_key}`")
+            if st.button("Change Key", use_container_width=True):
+                os.environ["OPENAI_API_KEY"] = ""
                 st.rerun()
+        else:
+            api_key_input = st.text_input(
+                "OpenAI API Key",
+                type="password",
+                placeholder="sk-...",
+                help="Required to process documents",
+                label_visibility="collapsed"
+            )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Save Key", type="primary", use_container_width=True):
+                    if api_key_input:
+                        is_valid, error = validate_api_key(api_key_input)
+                        if is_valid:
+                            os.environ["OPENAI_API_KEY"] = api_key_input
+                            st.success("✓ Key saved!")
+                            st.rerun()
+                        else:
+                            st.error(error)
+                    else:
+                        st.warning("Enter a key first")
+            with col2:
+                st.link_button("Get Key", OPENAI_API_URL, use_container_width=True)
         
         st.divider()
         
@@ -229,7 +204,7 @@ def render_sidebar():
             for doc_id, doc_info in list(st.session_state.documents.items()):
                 col1, col2 = st.columns([4, 1])
                 with col1:
-                    display_name = doc_info['name'][:25] + "..." if len(doc_info['name']) > 25 else doc_info['name']
+                    display_name = doc_info['name'][:22] + "..." if len(doc_info['name']) > 22 else doc_info['name']
                     st.caption(f"📄 {display_name}")
                 with col2:
                     if st.button("✕", key=f"del_{doc_id}", help=f"Remove {doc_info['name']}"):
@@ -239,7 +214,7 @@ def render_sidebar():
                         rebuild_retriever()
                         st.rerun()
         else:
-            st.info("No documents uploaded yet")
+            st.info("No documents uploaded", icon="📭")
         
         st.divider()
         
@@ -283,33 +258,36 @@ def render_sidebar():
             
             if eval_file and st.session_state.documents:
                 if st.button("▶ Run Evaluation", type="primary", use_container_width=True):
-                    try:
-                        test_data = json.load(eval_file)
-                        cases = [EvalCase.from_dict(c) for c in test_data]
-                        evaluator = RAGEvaluator(cases, verbose=False)
-                        pipeline_func = create_pipeline_func()
-                        
-                        progress_bar = st.progress(0)
-                        status_text = st.empty()
-                        
-                        def update_progress(current, total):
-                            progress_bar.progress(current / total)
-                            status_text.text(f"Testing {current}/{total}...")
-                        
-                        report = evaluator.run_all(pipeline_func, progress_callback=update_progress)
-                        
-                        progress_bar.empty()
-                        status_text.empty()
-                        
-                        st.success("Evaluation Complete!")
-                        st.metric("Faithfulness", f"{report.avg_faithfulness:.2f}")
-                        st.metric("Relevancy", f"{report.avg_relevancy:.2f}")
-                        st.metric("Accuracy", f"{report.retrieval_accuracy:.1%}")
-                        
-                    except json.JSONDecodeError:
-                        st.error("Invalid JSON file")
-                    except Exception as e:
-                        st.error(f"Error: {str(e)}")
+                    if not check_api_key():
+                        show_api_key_error()
+                    else:
+                        try:
+                            test_data = json.load(eval_file)
+                            cases = [EvalCase.from_dict(c) for c in test_data]
+                            evaluator = RAGEvaluator(cases, verbose=False)
+                            pipeline_func = create_pipeline_func()
+                            
+                            progress_bar = st.progress(0)
+                            status_text = st.empty()
+                            
+                            def update_progress(current, total):
+                                progress_bar.progress(current / total)
+                                status_text.text(f"Testing {current}/{total}...")
+                            
+                            report = evaluator.run_all(pipeline_func, progress_callback=update_progress)
+                            
+                            progress_bar.empty()
+                            status_text.empty()
+                            
+                            st.success("Evaluation Complete!")
+                            st.metric("Faithfulness", f"{report.avg_faithfulness:.2f}")
+                            st.metric("Relevancy", f"{report.avg_relevancy:.2f}")
+                            st.metric("Accuracy", f"{report.retrieval_accuracy:.1%}")
+                            
+                        except json.JSONDecodeError:
+                            st.error("Invalid JSON file")
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
             elif eval_file and not st.session_state.documents:
                 st.warning("Upload documents first")
         
@@ -321,12 +299,6 @@ def render_sidebar():
             st.session_state.suggested_questions = []
             st.rerun()
         
-        # Footer
-        st.markdown("""
-        <div style="text-align: center; padding-top: 1rem; opacity: 0.5; font-size: 0.75rem;">
-            Powered by OpenAI & LangChain
-        </div>
-        """, unsafe_allow_html=True)
     
     return agent_mode, use_hybrid, use_reranking, style, uploaded_files
 
@@ -334,6 +306,11 @@ def render_sidebar():
 def process_uploads(uploaded_files):
     """Process uploaded PDF files."""
     if not uploaded_files:
+        return
+    
+    # Check API key before processing
+    if not check_api_key():
+        show_api_key_error()
         return
     
     new_files = [f for f in uploaded_files if f.name not in st.session_state.processed_files]
@@ -539,12 +516,28 @@ def process_question_agent(question: str):
 def render_main_content(agent_mode: bool, use_hybrid: bool, use_reranking: bool, style: str):
     """Render the main chat interface."""
     # Header
-    st.markdown("""
-    <div style="margin-bottom: 1.5rem;">
-        <h1 style="margin-bottom: 0.25rem;">💬 Chat with Your Documents</h1>
-        <p style="opacity: 0.7; margin: 0;">Upload PDFs and ask questions about their content</p>
-    </div>
-    """, unsafe_allow_html=True)
+    col_title, col_links = st.columns([3, 1])
+    with col_title:
+        st.markdown("""
+        <div style="margin-bottom: 1rem;">
+            <h1 style="margin-bottom: 0.25rem;">💬 Chat with Your Documents</h1>
+            <p style="opacity: 0.7; margin: 0;">Upload PDFs and ask questions about their content</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col_links:
+        st.markdown(f"""
+        <div style="text-align: right; padding-top: 1rem;">
+            <a href="{GITHUB_URL}" target="_blank" style="
+                display: inline-block;
+                padding: 0.4rem 0.8rem;
+                background: rgba(255,255,255,0.1);
+                border-radius: 6px;
+                text-decoration: none;
+                font-size: 0.85rem;
+            ">⭐ GitHub</a>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Active features badges
     badges = []
@@ -570,9 +563,12 @@ def render_main_content(agent_mode: bool, use_hybrid: bool, use_reranking: bool,
                     key=f"suggest_{i}",
                     use_container_width=True
                 ):
-                    st.session_state.suggested_questions = []
-                    st.session_state.messages.append({"role": "user", "content": question})
-                    st.rerun()
+                    if not check_api_key():
+                        show_api_key_error()
+                    else:
+                        st.session_state.suggested_questions = []
+                        st.session_state.messages.append({"role": "user", "content": question})
+                        st.rerun()
     
     # Chat history
     for message in st.session_state.messages:
@@ -608,6 +604,8 @@ def render_main_content(agent_mode: bool, use_hybrid: bool, use_reranking: bool,
     if prompt := st.chat_input("Ask a question about your documents..."):
         if not st.session_state.documents:
             st.warning("⚠️ Please upload at least one PDF first")
+        elif not check_api_key():
+            show_api_key_error()
         else:
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user", avatar="👤"):
@@ -640,19 +638,6 @@ def render_main_content(agent_mode: bool, use_hybrid: bool, use_reranking: bool,
 def main():
     """Main application entry point."""
     init_session_state()
-    
-    # Check for API key
-    api_key_from_env = os.environ.get("OPENAI_API_KEY")
-    
-    if api_key_from_env and not st.session_state.get("api_key_verified"):
-        # Validate existing env key
-        is_valid, _ = validate_api_key(api_key_from_env)
-        if is_valid:
-            st.session_state.api_key_verified = True
-    
-    if not st.session_state.get("api_key_verified"):
-        render_api_key_setup()
-        return
     
     # Render sidebar and get settings
     agent_mode, use_hybrid, use_reranking, style, uploaded_files = render_sidebar()
