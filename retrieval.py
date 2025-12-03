@@ -1,4 +1,3 @@
-"""Query processing and context retrieval."""
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.messages import HumanMessage
 
@@ -11,17 +10,12 @@ from utils import format_chat_history
 
 
 def rewrite_query(question: str, chat_history: list[dict]) -> str:
-    """
-    Rewrite follow-up question to be standalone.
-    If no history or question is already standalone, returns original.
-    """
+    """Rewrite follow-up questions to be standalone."""
     if not chat_history:
         return question
     
-    # Check if question seems standalone (simple heuristic)
     standalone_indicators = ["what is", "who is", "how does", "explain", "describe"]
     if any(question.lower().startswith(ind) for ind in standalone_indicators):
-        # Might be standalone, but still rewrite if history exists
         pass
     
     llm = ChatOpenAI(model=LLM_MODEL, temperature=0)
@@ -37,7 +31,7 @@ def rewrite_query(question: str, chat_history: list[dict]) -> str:
 
 
 def get_query_embedding(query: str) -> list[float]:
-    """Generate embedding for a query string."""
+    """Generate embedding for a query."""
     embedder = OpenAIEmbeddings(model=EMBEDDING_MODEL)
     return embedder.embed_query(query)
 
@@ -47,30 +41,13 @@ def retrieve_context(
     store: VectorStore,
     chat_history: list[dict] = None
 ) -> dict:
-    """
-    Full retrieval pipeline with query rewriting.
-    
-    Returns:
-        {
-            "original_query": str,
-            "rewritten_query": str,
-            "chunks": list of {content, doc_name, page, distance},
-            "is_low_confidence": bool
-        }
-    """
-    # Rewrite query if needed
+    """Retrieve relevant context for a query."""
     rewritten = rewrite_query(query, chat_history or [])
-    
-    # Get embedding
     query_embedding = get_query_embedding(rewritten)
     
-    # Retrieve
     results = store.query(query_embedding, n_results=TOP_K)
-    
-    # Filter by threshold
     filtered, is_low_confidence = store.filter_by_threshold(results)
     
-    # Format chunks
     chunks = []
     for i, doc in enumerate(filtered["documents"]):
         meta = filtered["metadatas"][i] if filtered["metadatas"] else {}
@@ -92,7 +69,7 @@ def retrieve_context(
 
 
 def format_context(chunks: list[dict]) -> str:
-    """Format retrieved chunks into context string for LLM."""
+    """Format retrieved chunks into a context string."""
     if not chunks:
         return "No relevant context found."
     
@@ -101,6 +78,7 @@ def format_context(chunks: list[dict]) -> str:
         doc_name = chunk.get("doc_name", "Unknown")
         page = chunk.get("page", 0)
         content = chunk.get("content", "")
+        
         formatted.append(
             f"[Source {i}: {doc_name}, Page {page}]\n"
             f"{content}"

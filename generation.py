@@ -1,6 +1,4 @@
-"""LLM response generation with streaming."""
 from typing import Generator
-
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -12,7 +10,7 @@ def build_messages(
     context: str,
     style: str = "Concise"
 ) -> list:
-    """Build message list for LLM."""
+    """Build the message list for the LLM."""
     style_instruction = STYLE_MAP.get(style, STYLE_MAP["Concise"])
     
     system_content = SYSTEM_PROMPT.format(
@@ -31,7 +29,7 @@ def generate_response(
     context: str,
     style: str = "Concise"
 ) -> str:
-    """Generate complete response (non-streaming)."""
+    """Generate a response using the LLM."""
     llm = ChatOpenAI(
         model=LLM_MODEL,
         max_tokens=MAX_TOKENS,
@@ -49,11 +47,7 @@ def stream_response(
     context: str,
     style: str = "Concise"
 ) -> Generator[str, None, None]:
-    """
-    Generate streaming response.
-    
-    Yields: tokens as they're generated
-    """
+    """Stream a response from the LLM."""
     llm = ChatOpenAI(
         model=LLM_MODEL,
         max_tokens=MAX_TOKENS,
@@ -64,8 +58,6 @@ def stream_response(
     messages = build_messages(question, context, style)
     
     for chunk in llm.stream(messages):
-        # Handle both string content and None
-        # Use getattr for safety in case chunk structure varies
         content = getattr(chunk, 'content', None)
         if content is not None and content != "":
             yield content
