@@ -1,7 +1,5 @@
-"""PDF ingestion pipeline: load, chunk, embed."""
 import os
 from typing import Callable, Optional
-
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
@@ -15,13 +13,7 @@ from storage import VectorStore
 
 
 def load_pdf(file_path: str) -> tuple[list[dict], int]:
-    """
-    Load PDF and extract text with page metadata.
-    
-    Returns: (pages, total_chars)
-        pages: list of {"content": str, "page": int}
-        total_chars: total characters extracted
-    """
+    """Load PDF and extract pages with content."""
     loader = PyPDFLoader(file_path)
     documents = loader.load()
     
@@ -30,7 +22,7 @@ def load_pdf(file_path: str) -> tuple[list[dict], int]:
     
     for doc in documents:
         content = doc.page_content
-        page_num = doc.metadata.get("page", 0) + 1  # 1-indexed
+        page_num = doc.metadata.get("page", 0) + 1
         pages.append({"content": content, "page": page_num})
         total_chars += len(content)
     
@@ -42,16 +34,7 @@ def chunk_pages(
     doc_id: str,
     doc_name: str
 ) -> list[dict]:
-    """
-    Split pages into chunks with metadata.
-    
-    Returns list of:
-        {
-            "id": unique chunk id,
-            "content": chunk text,
-            "metadata": {doc_id, doc_name, page, chunk_index}
-        }
-    """
+    """Split pages into overlapping chunks."""
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
@@ -63,7 +46,6 @@ def chunk_pages(
     
     for page in pages:
         page_chunks = splitter.split_text(page["content"])
-        
         for chunk_text in page_chunks:
             chunks.append({
                 "id": f"{doc_id}-{chunk_index}",
@@ -84,15 +66,7 @@ def embed_chunks(
     chunks: list[dict],
     progress_callback: Optional[Callable[[float], None]] = None
 ) -> list[list[float]]:
-    """
-    Generate embeddings for chunks in batches.
-    
-    Args:
-        chunks: list of chunk dicts with "content" key
-        progress_callback: optional function(progress: float) for UI updates
-    
-    Returns: list of embedding vectors
-    """
+    """Generate embeddings for all chunks."""
     embedder = OpenAIEmbeddings(model=EMBEDDING_MODEL)
     texts = [c["content"] for c in chunks]
     
@@ -118,29 +92,9 @@ def ingest_pdf(
     store: VectorStore,
     progress_callback: Optional[Callable[[str, float], None]] = None
 ) -> dict:
-    """
-    Full ingestion pipeline.
-    
-    Args:
-        file_path: path to PDF file
-        file_name: original filename for display
-        file_bytes: raw file bytes for hashing
-        store: VectorStore instance
-        progress_callback: optional function(stage: str, progress: float)
-    
-    Returns:
-        {
-            "status": "ingested" | "skipped" | "error",
-            "doc_id": str,
-            "doc_name": str,
-            "pages": int,
-            "chunks": int,
-            "error": optional str
-        }
-    """
+    """Complete PDF ingestion pipeline."""
     doc_id = compute_file_hash(file_bytes)
     
-    # Skip if already exists
     if store.doc_exists(doc_id):
         return {
             "status": "skipped",
@@ -151,13 +105,11 @@ def ingest_pdf(
         }
     
     try:
-        # Stage 1: Load PDF
         if progress_callback:
             progress_callback("Loading PDF", 0.1)
         
         pages, total_chars = load_pdf(file_path)
         
-        # Validate content
         if total_chars < MIN_EXTRACTED_CHARS:
             return {
                 "status": "error",
@@ -166,20 +118,17 @@ def ingest_pdf(
                 "error": "PDF appears empty or scanned (no extractable text)"
             }
         
-        # Stage 2: Chunk
         if progress_callback:
             progress_callback("Chunking", 0.2)
         
         chunks = chunk_pages(pages, doc_id, file_name)
         
-        # Stage 3: Embed
         def embed_progress(p):
             if progress_callback:
                 progress_callback("Embedding", 0.2 + p * 0.7)
         
         embeddings = embed_chunks(chunks, embed_progress)
         
-        # Stage 4: Store
         if progress_callback:
             progress_callback("Storing", 0.95)
         
@@ -200,7 +149,7 @@ def ingest_pdf(
             "pages": len(pages),
             "chunks": len(chunks)
         }
-    
+        
     except Exception as e:
         return {
             "status": "error",

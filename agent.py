@@ -1,12 +1,3 @@
-"""
-Agentic RAG implementation with multi-step reasoning.
-
-Features:
-- Query decomposition for complex questions
-- Iterative retrieval with evaluation
-- Self-correction when information is insufficient
-- Reasoning trace for transparency
-"""
 import re
 import logging
 from typing import Generator, Optional, Callable
@@ -28,7 +19,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AgentStep:
-    """Single step in agent reasoning."""
     step_num: int
     thought: str
     action: str
@@ -47,7 +37,6 @@ class AgentStep:
 
 @dataclass
 class AgentResult:
-    """Complete agent execution result."""
     answer: str
     steps: list[AgentStep] = field(default_factory=list)
     total_retrievals: int = 0
@@ -65,24 +54,9 @@ class AgentResult:
 
 
 class RAGAgent:
-    """
-    Agentic RAG with multi-step reasoning and iterative retrieval.
-    
-    The agent:
-    1. Analyzes the question to determine what information is needed
-    2. Searches documents with specific queries
-    3. Evaluates if retrieved information is sufficient
-    4. Continues searching or formulates answer
-    
-    This approach outperforms single-shot RAG for:
-    - Complex multi-part questions
-    - Questions requiring information synthesis
-    - Queries with ambiguous terms
-    """
-    
     def __init__(
         self,
-        retriever,  # HybridRetriever or similar
+        retriever,
         max_iterations: int = AGENT_MAX_ITERATIONS,
         model: str = AGENT_MODEL,
         verbose: bool = False
@@ -98,29 +72,19 @@ class RAGAgent:
         self.embedder = OpenAIEmbeddings(model=EMBEDDING_MODEL)
     
     def run(self, question: str) -> AgentResult:
-        """
-        Execute agent reasoning loop.
-        
-        Args:
-            question: User question
-        
-        Returns:
-            AgentResult with answer, reasoning steps, and sources
-        """
+        """Run the agent to answer a question."""
         steps = []
         all_sources = []
         scratchpad = ""
         
         system_prompt = AGENT_SYSTEM_PROMPT.format(max_iterations=self.max_iterations)
         
-        for iteration in range(self.max_iterations + 1):  # +1 for final answer
-            # Build prompt with current scratchpad
+        for iteration in range(self.max_iterations + 1):
             user_prompt = f"Question: {question}\n\n{scratchpad}"
             
             if self.verbose:
                 logger.info(f"Iteration {iteration + 1}, scratchpad length: {len(scratchpad)}")
             
-            # Get LLM response
             try:
                 response = self.llm.invoke([
                     SystemMessage(content=system_prompt),
@@ -137,11 +101,9 @@ class RAGAgent:
                     error=str(e)
                 )
             
-            # Parse response
             parsed = self._parse_response(response_text)
             
             if parsed["type"] == "answer":
-                # Agent is ready to answer
                 step = AgentStep(
                     step_num=iteration + 1,
                     thought=parsed["thought"],
@@ -159,28 +121,23 @@ class RAGAgent:
                 )
             
             elif parsed["type"] == "search":
-                # Execute search
                 search_query = parsed["query"]
                 
                 if self.verbose:
                     logger.info(f"Searching: {search_query}")
                 
-                # Get embedding and retrieve
                 query_embedding = self.embedder.embed_query(search_query)
                 results, _ = self.retriever.retrieve(
                     query=search_query,
                     query_embedding=query_embedding,
-                    n_results=3  # Fewer results per search in agent mode
+                    n_results=3
                 )
                 
-                # Format observation
                 observation = self._format_search_results(results)
                 
-                # Track sources
                 for r in results:
                     all_sources.append(r.to_dict())
                 
-                # Create step
                 step = AgentStep(
                     step_num=iteration + 1,
                     thought=parsed["thought"],
@@ -190,22 +147,17 @@ class RAGAgent:
                 )
                 steps.append(step)
                 
-                # Update scratchpad
                 scratchpad += f"\nThought: {parsed['thought']}\n"
                 scratchpad += f"Action: search(\"{search_query}\")\n"
                 scratchpad += f"Observation: {observation}\n"
             
             else:
-                # Malformed response - try to recover
                 logger.warning(f"Malformed agent response: {response_text[:200]}")
-                
-                # Add a hint to the scratchpad
                 scratchpad += "\n[System: Please respond with either a search action or a final answer in the correct format.]\n"
         
         # Max iterations reached
         logger.warning("Agent reached max iterations without answering")
         
-        # Try to formulate an answer from collected information
         if all_sources:
             final_answer = self._force_answer(question, all_sources)
         else:
@@ -223,14 +175,7 @@ class RAGAgent:
         question: str,
         step_callback: Optional[Callable[[AgentStep], None]] = None
     ) -> Generator[str, None, AgentResult]:
-        """
-        Execute agent with streaming output.
-        
-        Yields tokens from final answer.
-        Calls step_callback for each intermediate step.
-        
-        Returns final AgentResult.
-        """
+        """Run the agent with streaming output."""
         steps = []
         all_sources = []
         scratchpad = ""
@@ -240,7 +185,6 @@ class RAGAgent:
         for iteration in range(self.max_iterations + 1):
             user_prompt = f"Question: {question}\n\n{scratchpad}"
             
-            # Get LLM response (non-streaming for intermediate steps)
             response = self.llm.invoke([
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=user_prompt)
@@ -262,7 +206,6 @@ class RAGAgent:
                 if step_callback:
                     step_callback(step)
                 
-                # Stream the answer
                 for char in parsed["answer"]:
                     yield char
                 
@@ -320,13 +263,7 @@ class RAGAgent:
         )
     
     def _parse_response(self, response: str) -> dict:
-        """
-        Parse agent LLM response into structured format.
-        
-        Expected formats:
-        - Thought: ... Action: search("...")
-        - Thought: ... Answer: ...
-        """
+        """Parse the agent's response to extract action or answer."""
         result = {
             "type": "unknown",
             "thought": "",
@@ -363,13 +300,12 @@ class RAGAgent:
         return result
     
     def _format_search_results(self, results: list) -> str:
-        """Format search results as observation string."""
+        """Format search results for the scratchpad."""
         if not results:
             return "No relevant results found."
         
         formatted = []
         for i, r in enumerate(results, 1):
-            # Truncate content for scratchpad
             content = r.content[:400] + "..." if len(r.content) > 400 else r.content
             formatted.append(f"[{i}] ({r.doc_name}, Page {r.page}): {content}")
         
@@ -410,24 +346,20 @@ Answer:"""
 
 
 class QueryDecomposer:
-    """
-    Decomposes complex queries into simpler sub-queries.
-    
-    Useful as a pre-processing step before agent execution.
-    """
+    """Decompose complex queries into sub-questions."""
     
     DECOMPOSE_PROMPT = """Analyze this question and determine if it needs to be broken into sub-questions.
 
 Question: {question}
 
-If the question is complex (multi-part, requires combining information, or compares multiple things), 
+If the question is complex (multi-part, requires combining information, or compares multiple things),
 break it into 2-4 simpler sub-questions that can be answered independently.
 
 If the question is already simple and focused, return it unchanged.
 
 Format your response as:
 - If simple: SIMPLE: [original question]
-- If complex: 
+- If complex:
   SUB1: [first sub-question]
   SUB2: [second sub-question]
   ...
@@ -438,23 +370,17 @@ Response:"""
         self.llm = ChatOpenAI(model=model, temperature=0)
     
     def decompose(self, question: str) -> list[str]:
-        """
-        Decompose question into sub-queries if needed.
-        
-        Returns list of 1+ questions.
-        """
+        """Decompose a question into sub-questions if complex."""
         prompt = self.DECOMPOSE_PROMPT.format(question=question)
         response = self.llm.invoke([HumanMessage(content=prompt)])
         text = response.content
         
-        # Parse response
         if "SIMPLE:" in text:
             return [question]
         
         sub_questions = []
         for line in text.split("\n"):
             if line.strip().startswith("SUB"):
-                # Extract question after "SUB1:" etc
                 match = re.search(r'SUB\d+:\s*(.+)', line)
                 if match:
                     sub_questions.append(match.group(1).strip())

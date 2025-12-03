@@ -1,106 +1,170 @@
-# Ask Your Docs - Agentic RAG 🤖📄
+# Ask Your Docs — Agentic RAG 📄🤖
 
-**Ask Your Docs** is an advanced Retrieval-Augmented Generation (RAG) application that transforms how you interact with your PDF documents. Built with **Streamlit**, **LangChain**, and **ChromaDB**, it goes beyond simple semantic search by incorporating **Hybrid Retrieval** (Keyword + Semantic), **Cross-Encoder Reranking**, and an **Agentic Mode** for multi-step reasoning.
+**Ask Your Docs** is an advanced Retrieval-Augmented Generation (RAG) application that transforms how you interact with PDF documents. Built with Streamlit, LangChain, and ChromaDB, it features **Hybrid Retrieval**, **Cross-Encoder Reranking**, and an **Agentic Mode** for multi-step reasoning.
 
-<p align="center">
-  <img src="imgs/1.png" width="100%" alt="Main Interface" />
-</p>
+## ✨ Features
 
-## 🚀 Project Overview
+- **📄 Multi-Document Support** — Upload and query multiple PDFs simultaneously
+- **🤖 Agent Mode** — Multi-step reasoning for complex questions
+- **🔀 Hybrid Search** — Combines BM25 keyword search with semantic vector search
+- **📊 Smart Reranking** — Cross-encoder model improves result relevance
+- **💬 Interactive Chat** — Streaming responses with source citations
+- **🧪 Built-in Evaluation** — Test your pipeline with custom test cases
+- **🔑 Easy API Key Setup** — Enter your OpenAI key directly in the UI
 
-Standard RAG systems often fail when questions require combining information from multiple parts of a document or when exact keyword matching is crucial. This project solves these limitations by implementing a robust pipeline:
+## 🚀 Quick Start
 
-1.  **Ingestion:** PDFs are processed, chunked, and indexed.
-2.  **Hybrid Retrieval:** Combines **BM25** (for exact keywords) and **Vector Search** (for semantic meaning) to find the best candidates.
-3.  **Reranking:** Uses a Cross-Encoder model to re-score and re-order retrieved chunks, ensuring high precision.
-4.  **Generation:**
-    - **Standard Mode:** Generates a direct answer using the retrieved context.
-    - **Agent Mode:** Uses an intelligent agent to break down complex questions, perform iterative searches, and reason through the answer.
+### Prerequisites
 
-## ✨ Key Features
+- Python 3.10+
+- OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
 
-- **📄 Multi-Document Support:** Upload and chat with multiple PDF documents simultaneously.
-- **🧠 Agentic RAG:** Enable "Agent Mode" to handle complex, multi-hop queries that require reasoning.
-- **🔀 Hybrid Search:** Seamlessly blends keyword search (BM25) with semantic vector search (ChromaDB).
-- **📊 Smart Reranking:** Utilizes `sentence-transformers` cross-encoders to filter noise and surface the most relevant context.
-- **💬 Interactive Chat:** User-friendly Streamlit interface with chat history, source citations, and page references.
-- **🧪 Built-in Evaluation:** Integrated tool to upload JSON test cases and evaluate the pipeline's Faithfulness and Relevancy.
-- **💡 Auto-Suggestions:** Automatically generates suggested questions based on the uploaded content.
+### Installation
 
-## 🛠️ Installation
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/ask-your-docs.git
+cd ask-your-docs
 
-Prerequisites: Python 3.10+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-1.  **Clone the repository:**
+# Install dependencies
+pip install -r requirements.txt
 
-    ```bash
-    git clone [https://github.com/yourusername/doc-rag-project.git](https://github.com/yourusername/doc-rag-project.git)
-    cd doc-rag-project
-    ```
+# Run the app
+streamlit run app.py
+```
 
-2.  **Create a virtual environment:**
+The app will open in your browser. Enter your OpenAI API key when prompted.
 
-    ```bash
-    python -m venv venv
+### Using Environment Variables (Optional)
 
-    # Windows
-    venv\Scripts\activate
-
-    # Mac/Linux
-    source venv/bin/activate
-    ```
-
-3.  **Install dependencies:**
-
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4.  **Configure Environment:**
-    Copy the example environment file and add your OpenAI API key.
-    ```bash
-    cp .env.example .env
-    ```
-    Open `.env` and set your key:
-    ```env
-    OPENAI_API_KEY=sk-your-api-key-here
-    ```
+```bash
+cp .env.example .env
+# Edit .env and add your OPENAI_API_KEY
+```
 
 ## 🖥️ Usage
 
-1.  **Start the application:**
+1. **Enter API Key** — On first launch, enter your OpenAI API key
+2. **Upload PDFs** — Use the sidebar to upload one or more PDF files
+3. **Configure Settings** — Toggle Agent Mode, Hybrid Search, or Reranking
+4. **Ask Questions** — Type your question in the chat input
+5. **View Sources** — Expand "View Sources" to see citations
 
-    ```bash
-    streamlit run app.py
-    ```
+## ⚙️ Configuration Options
 
-2.  **Using the App:**
-    - **Upload:** Use the sidebar to upload one or more PDF files.
-    - **Configure:** Toggle "Agent Mode", "Hybrid Search", or "Reranking" in the settings.
-    - **Chat:** Type your question in the chat input.
-    - **Inspect:** Expand "View Sources" or "Agent Reasoning" (in Agent Mode) to see how the answer was derived.
+| Setting | Description |
+|---------|-------------|
+| **Agent Mode** | Enable multi-step reasoning for complex queries |
+| **Hybrid Search** | Combine keyword (BM25) and semantic search |
+| **Reranking** | Use cross-encoder to improve result quality |
+| **Response Style** | Choose between Concise, Detailed, or ELI5 |
 
-<p align="center">
-  <img src="imgs/4.png" width="48%" alt="Settings Panel" />
-  <img src="imgs/2.png" width="48%" alt="Agent Mode Reasoning" />
-</p>
-<p align="center">
-    <em>Left: Advanced Configuration settings. Right: Agent Mode logic trace.</em>
-</p>
+## 🧪 Evaluation
 
-## 🧪 Evaluation (LLM-as-a-Judge)
+Test your RAG pipeline with custom test cases:
 
-The app includes a built-in evaluation framework to test the accuracy of the RAG pipeline.
+1. Create a JSON file with test cases (see `test_cases_template_1.json`)
+2. Upload documents in the sidebar
+3. Go to **Evaluation** section
+4. Upload your test cases JSON
+5. Click **Run Evaluation**
 
-- **Prepare Test Cases:** We provide two template formats in the repository:
-  - `test_cases_template_1.json`: Simple format using `question` and `expected_answer`.
-  - `test_cases_template_2.json`: Advanced format using `id`, `input`, `expected_output`, and `description`.
-- **Run Test:**
-  1.  Navigate to the **Evaluation** section in the sidebar.
-  2.  Upload one of the template files (or your own custom JSON).
-  3.  Click **Run Evaluation**.
-- **Analyze:** The system will generate Faithfulness and Relevancy scores for each question and display a detailed report.
+### Test Case Format
 
-<p align="center">
-  <img src="imgs/3.png" width="40%" alt="Evaluation Dashboard" />
-</p>
+```json
+[
+  {
+    "question": "What is the main topic?",
+    "expected_answer": "The document discusses...",
+    "expected_page": 1,
+    "tags": ["overview"]
+  }
+]
+```
+
+## 🚢 Deployment
+
+### Streamlit Community Cloud
+
+1. Push your code to GitHub
+2. Go to [share.streamlit.io](https://share.streamlit.io)
+3. Connect your repository
+4. Set `OPENAI_API_KEY` in Secrets (optional)
+5. Deploy!
+
+### Railway / Render / Heroku
+
+The included `Procfile` works with these platforms:
+
+```bash
+# Railway
+railway up
+
+# Heroku
+heroku create
+git push heroku main
+```
+
+Set the `OPENAI_API_KEY` environment variable in your platform's dashboard.
+
+### Docker
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY . .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+EXPOSE 8501
+
+CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+```
+
+```bash
+docker build -t ask-your-docs .
+docker run -p 8501:8501 ask-your-docs
+```
+
+## 📁 Project Structure
+
+```
+ask-your-docs/
+├── app.py              # Main Streamlit application
+├── config.py           # Configuration and prompts
+├── storage.py          # ChromaDB vector store
+├── ingestion.py        # PDF loading and chunking
+├── retrieval.py        # Basic retrieval logic
+├── hybrid_retrieval.py # Hybrid search + reranking
+├── generation.py       # LLM response generation
+├── agent.py            # RAG agent implementation
+├── evaluation.py       # Evaluation framework
+├── suggestions.py      # Auto-generate questions
+├── utils.py            # Utilities and CSS
+├── requirements.txt    # Python dependencies
+├── Procfile           # Deployment config
+└── .streamlit/
+    └── config.toml     # Streamlit theme
+```
+
+## 🔧 Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| **"Invalid API key"** | Check your key at platform.openai.com |
+| **"PDF appears empty"** | The PDF may be scanned images; OCR needed |
+| **Slow first load** | Reranker model downloads on first use (~100MB) |
+| **Rate limited** | Wait a moment or upgrade your OpenAI plan |
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+Built with ❤️ using [Streamlit](https://streamlit.io), [LangChain](https://langchain.com), and [ChromaDB](https://www.trychroma.com)
