@@ -2,7 +2,12 @@
 
 **Ask Your Docs** is an advanced Retrieval-Augmented Generation (RAG) application that transforms how you interact with your PDF documents. Built with **Streamlit**, **LangChain**, and **ChromaDB**, it goes beyond simple semantic search by incorporating **Hybrid Retrieval** (Keyword + Semantic), **Cross-Encoder Reranking**, and an **Agentic Mode** for multi-step reasoning.
 
-![App Screenshot](imgs/1.png)
+<p align="center">
+  <img src="imgs/1.png" width="45%" alt="Main Interface" />
+  <img src="imgs/2.png" width="45%" alt="Agent Mode" /> 
+  <img src="imgs/3.png" width="45%" alt="Evaluation" />
+  <img src="imgs/4.png" width="45%" alt="Settings" />
+</p>
 
 ## 🚀 Project Overview
 
