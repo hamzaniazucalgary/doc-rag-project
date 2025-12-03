@@ -1,0 +1,14 @@
+[
+  {
+    "question": "What are the two main applications of unsupervised learning discussed in this class?",
+    "expected_answer": "The two main applications are dimensionality reduction and clustering.",
+    "expected_page": 3,
+    "tags": ["unsupervised-learning", "overview", "simple"]
+  },
+  {
+    "question": "What is a cluster label in clustering terminology?",
+    "expected_answer": "A cluster label is the cluster that each data sample is assigned to.",
+    "expected_page": 6,
+    "tags": ["terminology", "definition", "simple"]
+  }
+]

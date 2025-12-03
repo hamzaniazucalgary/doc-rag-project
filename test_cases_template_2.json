@@ -1,0 +1,16 @@
+[
+  {
+    "id": "TEST-001",
+    "input": "What are the two main applications of unsupervised learning?",
+    "expected_output": "The two main applications are dimensionality reduction and clustering.",
+    "description": "Basic factual recall about unsupervised learning applications.",
+    "tags": ["unsupervised-learning", "basics"]
+  },
+  {
+    "id": "TEST-002",
+    "input": "Explain the difference between K-means and DBSCAN.",
+    "expected_output": "K-means assumes spherical clusters and requires a predefined number of clusters (k), whereas DBSCAN is density-based, can find arbitrarily shaped clusters, and detects noise/outliers without needing a cluster count.",
+    "description": "Comparison question requiring synthesis of two concepts.",
+    "tags": ["comparison", "clustering", "advanced"]
+  }
+]

@@ -1,0 +1,29 @@
+# Core Framework
+streamlit>=1.31.0
+langchain>=0.1.0
+langchain-openai>=0.0.5
+langchain-community>=0.0.10
+langchain-text-splitters>=0.0.1
+
+# Vector Database
+chromadb>=0.4.22
+
+# PDF Processing
+pypdf>=3.17.0
+
+# Tokenization
+tiktoken>=0.5.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# === NEW DEPENDENCIES ===
+
+# Hybrid Search - BM25
+rank-bm25>=0.2.2
+
+# Cross-Encoder Reranking
+sentence-transformers>=2.2.0
+
+# Evaluation metrics (optional but recommended)
+numpy>=1.24.0
